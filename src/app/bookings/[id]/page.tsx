@@ -26,14 +26,9 @@ const STATUS_STEPS = [
   { status: 'completed',             label: 'Completed ✓'         },
 ]
 
-// Statuses where driver is already on the way
 const DRIVER_EN_ROUTE_STATUSES = ['driver_en_route', 'pickup_arrived']
-
-// Statuses where cancel is blocked entirely
-const CANCEL_BLOCKED_STATUSES = ['vehicle_collected', 'at_wash_facility', 'wash_in_progress', 'returning_vehicle', 'delivery_arrived', 'delivery_pin_released', 'completed', 'cancelled']
-
-// Statuses where vehicle edit is still allowed (before driver arrives)
-const EDIT_ALLOWED_STATUSES = ['confirmed', 'driver_assigned', 'driver_en_route']
+const CANCEL_BLOCKED_STATUSES  = ['vehicle_collected', 'at_wash_facility', 'wash_in_progress', 'returning_vehicle', 'delivery_arrived', 'delivery_pin_released', 'completed', 'cancelled']
+const EDIT_ALLOWED_STATUSES    = ['confirmed', 'driver_assigned', 'driver_en_route']
 
 export default function BookingDetailPage() {
   const { id }  = useParams<{ id: string }>()
@@ -61,13 +56,12 @@ export default function BookingDetailPage() {
     )
   }
 
-  const status       = booking.status
-  const currentIdx   = STATUS_STEPS.findIndex(s => s.status === status)
-  const washLabel    = WASH_PACKAGE_LABELS[booking.wash_package as WashPackageKey] ?? booking.wash_package
-  const myCredits    = store.getActiveCredits(booking.customer_name)
-  const totalCredit  = myCredits.reduce((s, c) => s + c.amount, 0)
+  const status      = booking.status
+  const currentIdx  = STATUS_STEPS.findIndex(s => s.status === status)
+  const washLabel   = WASH_PACKAGE_LABELS[booking.wash_package as WashPackageKey] ?? booking.wash_package
+  const myCredits   = store.getActiveCredits(booking.customer_name)
+  const totalCredit = myCredits.reduce((s, c) => s + c.amount, 0)
 
-  // Cancel rules
   const canCancelFree    = status === 'confirmed' || status === 'pending_payment'
   const canCancelWithFee = DRIVER_EN_ROUTE_STATUSES.includes(status)
   const cancelBlocked    = CANCEL_BLOCKED_STATUSES.includes(status)
@@ -104,7 +98,6 @@ export default function BookingDetailPage() {
 
   function handleCancel() {
     if (canCancelFree) {
-      // Free cancellation
       store.updateBookingStatus(id, 'cancelled', 'Customer')
       store.updateBookingDetails(id, {
         cancelled_at:        new Date().toISOString(),
@@ -115,7 +108,6 @@ export default function BookingDetailPage() {
       toast.success('Booking cancelled — no charge')
       router.push('/dashboard')
     } else if (canCancelWithFee) {
-      // Late cancellation — R150 fee + auto payment request
       store.updateBookingStatus(id, 'cancelled', 'Customer')
       store.updateBookingDetails(id, {
         cancelled_at:        new Date().toISOString(),
@@ -123,7 +115,6 @@ export default function BookingDetailPage() {
         cancellation_reason: cancelReason,
         cancellation_fee:    LATE_CANCEL_FEE,
       })
-      // Auto payment request for fee
       const profile = store.customerProfile
       const inv     = store.invoices.find(i => i.booking_id === id)
       if (inv || profile) {
@@ -140,7 +131,6 @@ export default function BookingDetailPage() {
           reference:     `CANCEL-${id}`,
           notes:         'Late cancellation fee — driver was en route',
         })
-        // Send WhatsApp if we have cell
         if (profile?.cell) {
           const num = '27' + profile.cell.replace(/^0/, '').replace(/\s/g, '')
           const msg = encodeURIComponent(
@@ -157,13 +147,12 @@ export default function BookingDetailPage() {
   }
 
   const isMotorbike = editForm.vehicle_type === 'motorbike'
-  const makes  = isMotorbike ? MOTORBIKE_MAKES  : CAR_MAKES
-  const models = editForm.make ? (isMotorbike ? MOTORBIKE_MAKES_MODELS[editForm.make] : CAR_MAKES_MODELS[editForm.make]) ?? [] : []
+  const makes       = isMotorbike ? MOTORBIKE_MAKES : CAR_MAKES
+  const models      = editForm.make ? (isMotorbike ? MOTORBIKE_MAKES_MODELS[editForm.make] : CAR_MAKES_MODELS[editForm.make]) ?? [] : []
 
   return (
     <div className="space-y-5 anim-fadeup pb-8">
 
-      {/* Header */}
       <div className="pt-2">
         <button onClick={() => router.push('/dashboard')}
           className="flex items-center gap-1 text-sm font-medium mb-4" style={{ color: 'var(--brand-primary)' }}>
@@ -182,7 +171,6 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      {/* Cancellation fee banner */}
       {booking.cancellation_fee && booking.cancellation_fee > 0 && (
         <div className="card p-4 flex items-center gap-3"
           style={{ background:'rgba(255,59,48,0.06)', border:'1.5px solid rgba(255,59,48,0.3)' }}>
@@ -194,7 +182,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* Progress tracker */}
       {status !== 'cancelled' && (
         <div className="card p-4">
           <p className="label mb-3">Booking Progress</p>
@@ -219,7 +206,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* Booking details */}
       <div className="list-group">
         <div className="list-item">
           <Car className="w-4 h-4 shrink-0" style={{ color:'var(--text-tertiary)' }} />
@@ -251,7 +237,6 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      {/* Services */}
       <div className="card p-4 space-y-2">
         <p className="label">Services</p>
         <p className="text-sm font-medium" style={{ color:'var(--text-primary)' }}>🚿 {washLabel}</p>
@@ -260,7 +245,6 @@ export default function BookingDetailPage() {
         {booking.extras.map(e => <p key={e} className="text-sm" style={{ color:'var(--text-secondary)' }}>✨ {e}</p>)}
       </div>
 
-      {/* PINs */}
       {!['pending_payment','cancelled'].includes(status) && (
         <div className="card p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -292,7 +276,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* Credits */}
       {totalCredit > 0 && (
         <div className="card p-4 flex items-center gap-3" style={{ background:'rgba(52,199,89,0.06)', border:'1.5px solid rgba(52,199,89,0.3)' }}>
           <Gift className="w-5 h-5 shrink-0" style={{ color:'#34c759' }} />
@@ -304,17 +287,13 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* Messages */}
-      <button onClick={() => setShowMessages(v => !v)}
-        className="btn btn-secondary w-full py-3 text-sm font-medium">
+      <button onClick={() => setShowMessages(v => !v)} className="btn btn-secondary w-full py-3 text-sm font-medium">
         {showMessages ? 'Hide Messages' : '💬 View Messages'}
       </button>
-      {showMessages && <MessageThread bookingId={id} role="customer" />}
+      {showMessages && <MessageThread bookingId={id} role="customer" roleName="Customer" />}
 
-      {/* EDIT booking — vehicle + addresses only */}
       {canEdit && !showEdit && status !== 'cancelled' && (
-        <button onClick={startEdit}
-          className="btn btn-secondary w-full py-3 flex items-center justify-center gap-2 text-sm font-medium">
+        <button onClick={startEdit} className="btn btn-secondary w-full py-3 flex items-center justify-center gap-2 text-sm font-medium">
           <Edit2 className="w-4 h-4" /> Edit Booking Details
         </button>
       )}
@@ -328,8 +307,6 @@ export default function BookingDetailPage() {
           <p className="text-xs" style={{ color:'var(--text-secondary)' }}>
             You can change vehicle details and addresses. Date and time cannot be changed — contact us if needed.
           </p>
-
-          {/* Vehicle type */}
           <div>
             <p className="label mb-2">Vehicle Type</p>
             <div className="grid grid-cols-2 gap-2">
@@ -342,8 +319,6 @@ export default function BookingDetailPage() {
               ))}
             </div>
           </div>
-
-          {/* Make / Model */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="label">Make</label>
@@ -360,7 +335,6 @@ export default function BookingDetailPage() {
               </select>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="label">Colour</label>
@@ -374,22 +348,18 @@ export default function BookingDetailPage() {
               <input className="input" value={editForm.registration} onChange={e => setEditForm(f => ({ ...f, registration: e.target.value.toUpperCase() }))} placeholder="CA 123-456" />
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="label">Pickup Address</label>
             <input className="input" value={editForm.pickup_address} onChange={e => setEditForm(f => ({ ...f, pickup_address: e.target.value }))} />
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="label">Delivery Address</label>
             <input className="input" value={editForm.delivery_address} onChange={e => setEditForm(f => ({ ...f, delivery_address: e.target.value }))} />
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="label">Notes</label>
             <textarea className="input" value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any special instructions..." />
           </div>
-
           <div className="flex gap-3">
             <button className="btn btn-secondary flex-1" onClick={() => setShowEdit(false)}>Cancel</button>
             <button className="btn btn-primary flex-1 py-3 font-bold" onClick={saveEdit}>
@@ -399,7 +369,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* CANCEL booking */}
       {!cancelBlocked && status !== 'cancelled' && !showEdit && (
         <div>
           {cancelStep === 'idle' && (
@@ -409,7 +378,6 @@ export default function BookingDetailPage() {
               <XCircle className="w-4 h-4" /> Cancel This Booking
             </button>
           )}
-
           {cancelStep === 'reason' && (
             <div className="card-elevated p-5 space-y-4" style={{ border:'2px solid rgba(255,59,48,0.4)' }}>
               <div className="flex items-start gap-3">
@@ -421,23 +389,10 @@ export default function BookingDetailPage() {
                   <p className="text-xs mt-1" style={{ color:'var(--text-secondary)' }}>
                     {canCancelFree
                       ? 'No driver has been assigned yet. You can cancel at no charge.'
-                      : `Your driver is already en route. A cancellation fee of R${LATE_CANCEL_FEE} will be charged as a payment request.`
-                    }
+                      : `Your driver is already en route. A cancellation fee of R${LATE_CANCEL_FEE} will be charged.`}
                   </p>
                 </div>
               </div>
-
-              {canCancelWithFee && (
-                <div className="p-3 rounded-xl space-y-1" style={{ background:'rgba(255,59,48,0.06)', border:'1px solid rgba(255,59,48,0.2)' }}>
-                  <p className="text-xs font-bold" style={{ color:'#ff3b30' }}>Late Cancellation Policy</p>
-                  <p className="text-xs" style={{ color:'var(--text-secondary)' }}>
-                    • Driver is already en route to your location{'\n'}
-                    • A fee of R{LATE_CANCEL_FEE} covers the driver's time and travel{'\n'}
-                    • Payment request will be sent via WhatsApp immediately
-                  </p>
-                </div>
-              )}
-
               <div className="flex flex-col gap-1.5">
                 <label className="label">Reason for cancellation</label>
                 <select className="input" value={cancelReason} onChange={e => setCancelReason(e.target.value)}>
@@ -450,13 +405,9 @@ export default function BookingDetailPage() {
                   <option value="Other">Other</option>
                 </select>
               </div>
-
               <div className="flex gap-3">
-                <button className="btn btn-secondary flex-1" onClick={() => setCancelStep('idle')}>
-                  Keep Booking
-                </button>
-                <button
-                  className="btn flex-1 font-bold py-3"
+                <button className="btn btn-secondary flex-1" onClick={() => setCancelStep('idle')}>Keep Booking</button>
+                <button className="btn flex-1 font-bold py-3"
                   style={{ background:'#ff3b30', color:'#fff', opacity: !cancelReason ? 0.5 : 1 }}
                   disabled={!cancelReason}
                   onClick={() => setCancelStep('confirm')}>
@@ -465,7 +416,6 @@ export default function BookingDetailPage() {
               </div>
             </div>
           )}
-
           {cancelStep === 'confirm' && (
             <div className="card-elevated p-5 space-y-4" style={{ border:'2px solid #ff3b30' }}>
               <div className="text-center space-y-2">
@@ -476,15 +426,12 @@ export default function BookingDetailPage() {
                 <p className="text-sm" style={{ color:'var(--text-secondary)' }}>
                   {booking.make} {booking.model} · {booking.booking_date} at {booking.pickup_time}
                 </p>
-                {canCancelWithFee && (
-                  <p className="font-bold text-lg" style={{ color:'#ff3b30' }}>R{LATE_CANCEL_FEE} cancellation fee</p>
-                )}
+                {canCancelWithFee && <p className="font-bold text-lg" style={{ color:'#ff3b30' }}>R{LATE_CANCEL_FEE} cancellation fee</p>}
                 <p className="text-xs" style={{ color:'var(--text-tertiary)' }}>Reason: {cancelReason}</p>
               </div>
               <div className="flex gap-3">
                 <button className="btn btn-secondary flex-1" onClick={() => setCancelStep('idle')}>Go Back</button>
-                <button className="btn flex-1 font-bold py-3" style={{ background:'#ff3b30', color:'#fff' }}
-                  onClick={handleCancel}>
+                <button className="btn flex-1 font-bold py-3" style={{ background:'#ff3b30', color:'#fff' }} onClick={handleCancel}>
                   {canCancelWithFee ? `Cancel & Pay R${LATE_CANCEL_FEE}` : 'Yes, Cancel Booking'}
                 </button>
               </div>
@@ -493,7 +440,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {/* Already cancelled */}
       {status === 'cancelled' && (
         <div className="card p-5 text-center space-y-3"
           style={{ border:'1.5px solid rgba(255,59,48,0.3)', background:'rgba(255,59,48,0.04)' }}>
@@ -502,13 +448,10 @@ export default function BookingDetailPage() {
           {booking.cancellation_reason && (
             <p className="text-xs" style={{ color:'var(--text-secondary)' }}>Reason: {booking.cancellation_reason}</p>
           )}
-          <button onClick={() => router.push('/bookings/new')} className="btn btn-primary w-full py-3 font-bold">
-            Book Again
-          </button>
+          <button onClick={() => router.push('/bookings/new')} className="btn btn-primary w-full py-3 font-bold">Book Again</button>
         </div>
       )}
 
-      {/* Blocked cancel message */}
       {cancelBlocked && !['completed','cancelled'].includes(status) && (
         <div className="card p-4 flex items-center gap-3"
           style={{ background:'rgba(142,142,147,0.08)', border:'1px solid rgba(142,142,147,0.2)' }}>
