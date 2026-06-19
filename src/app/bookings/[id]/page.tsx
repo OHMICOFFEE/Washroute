@@ -10,6 +10,7 @@ import type { WashPackageKey } from '@/lib/utils/pricing'
 import MessageThread from '@/components/messaging/MessageThread'
 import toast from 'react-hot-toast'
 import { CAR_MAKES, CAR_MAKES_MODELS, MOTORBIKE_MAKES, MOTORBIKE_MAKES_MODELS, VEHICLE_COLOURS } from '@/lib/utils/vehicles'
+import PayWithPayCloudButton from '@/components/payments/PayWithPayCloudButton'
 
 const LATE_CANCEL_FEE = 150
 
@@ -170,6 +171,22 @@ export default function BookingDetailPage() {
           </div>
         </div>
       </div>
+
+      {status === 'pending_payment' && (
+        <div className="card-elevated p-5 space-y-3" style={{ border: '2px solid var(--brand-primary)' }}>
+          <div>
+            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Payment Required</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Complete payment to confirm your booking. We'll redirect you to our secure payment partner.
+            </p>
+          </div>
+          <PayWithPayCloudButton
+            orderId={booking.id}
+            amount={booking.total}
+            description={`${booking.make} ${booking.model} — ${washLabel}`}
+          />
+        </div>
+      )}
 
       {booking.cancellation_fee && booking.cancellation_fee > 0 && (
         <div className="card p-4 flex items-center gap-3"
