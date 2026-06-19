@@ -7,7 +7,7 @@
  */
 
 const SANDBOX = {
-  endpoint: 'https://addpay-open.wangtest.cn/api/entry',
+  endpoint: 'https://addpay-op.wangtest.cn/api/entry',
   appId: 'wz715fc0d10ee9d156',
   merchantNo: '302100085224',
   storeNo: '4021000637',
