@@ -59,6 +59,9 @@ export interface DemoBooking {
   cancellation_reason?:   string
   cancellation_fee?:      number
   edit_requested?:        boolean
+  payment_method?:        'pay_now' | 'pay_on_delivery'
+  payment_collected?:     boolean
+  payment_collected_method?: 'cash' | 'card'
 }
 
 export interface DemoDriver {
@@ -218,6 +221,7 @@ interface DemoStore {
   updateBookingDetails: (id: string, patch: Partial<DemoBooking>) => void
   assignDriver:         (bookingId: string, driverId: string) => void
   releaseDeliveryPin:   (bookingId: string) => void
+  markPaymentCollected: (bookingId: string, method: 'cash' | 'card') => void
   addDriver:            (d: Omit<DemoDriver, 'id' | 'active_jobs'>) => void
   getBooking:           (id: string) => DemoBooking | undefined
   sendMessage:          (msg: Omit<DemoMessage, 'id' | 'time' | 'read'>) => void
@@ -349,6 +353,16 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       ...d,
       bookings: d.bookings.map(b => b.id === bookingId
         ? { ...b, delivery_pin_released: true, status: 'delivery_pin_released', status_history: [...b.status_history, { status: 'delivery_pin_released' as DemoBookingStatus, time: now(), by: 'Driver' }] }
+        : b
+      ),
+    }))
+  }, [])
+
+  const markPaymentCollected = useCallback((bookingId: string, method: 'cash' | 'card') => {
+    update(d => ({
+      ...d,
+      bookings: d.bookings.map(b => b.id === bookingId
+        ? { ...b, payment_collected: true, payment_collected_method: method }
         : b
       ),
     }))
@@ -543,7 +557,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     <DemoContext.Provider value={{
       ...data,
       addBooking, updateBookingStatus, updateBookingDetails,
-      assignDriver, releaseDeliveryPin, addDriver, getBooking,
+      assignDriver, releaseDeliveryPin, markPaymentCollected, addDriver, getBooking,
       sendMessage, getMessages, markMessagesRead, unreadCount, updatePricing,
       addCredit, useCredit, getActiveCredits,
       addStaff, updateStaff, deleteStaff, clockIn, clockOut, updateTimeEntry, approveTimeEntry, deleteTimeEntry, getStaffEntries,
@@ -600,7 +614,7 @@ export function createBookingFromForm(
     fuel_amount:      fuelAmount,
     oil:              oilChoice,
     total,
-    status:           'confirmed',
+    status:           'pending_payment',
     driver_id:        null,
     pickup_pin:       String(Math.floor(100000 + Math.random() * 900000)),
     delivery_pin:     String(Math.floor(100000 + Math.random() * 900000)),
