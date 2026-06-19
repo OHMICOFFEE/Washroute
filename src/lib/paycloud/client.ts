@@ -51,6 +51,7 @@ export async function createPayCloudCheckout(params: CreateCheckoutParams): Prom
     description: params.description,
     notify_url: params.notifyUrl,
     return_url: params.returnUrl,
+    term_ip: '127.0.0.1',
   }
 
   if (params.attach) {
@@ -74,11 +75,17 @@ export async function createPayCloudCheckout(params: CreateCheckoutParams): Prom
     }
   }
 
+  const responseClone = response.clone()
   let json: Record<string, unknown>
   try {
     json = await response.json()
   } catch {
-    return { success: false, rawResponse: {}, errorMessage: 'PayCloud returned a non-JSON response' }
+    const rawText = await responseClone.text().catch(() => '')
+    return {
+      success: false,
+      rawResponse: {},
+      errorMessage: `PayCloud returned a non-JSON response (HTTP ${response.status}): ${rawText.slice(0, 200)}`,
+    }
   }
 
   if (!response.ok || json.code !== '0000' && json.code !== 0 && !json.pay_url) {
