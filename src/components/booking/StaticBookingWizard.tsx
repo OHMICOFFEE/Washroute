@@ -31,9 +31,10 @@ const DEFAULTS: BookingFormState = {
   fuel_station: null, fuel_amount: null, tyre_pressure: false,
   water_topup: false, oil_check: false, oil_option: null,
   custom_detail_price: 850, custom_detail_notes: '',
+  payment_method: 'cash_on_pickup',
 }
 
-const STEPS = ['Vehicle', 'Schedule', 'Wash', 'Extras', 'Concierge', 'Review']
+const STEPS = ['Vehicle', 'Schedule', 'Wash', 'Extras', 'Concierge', 'Payment', 'Review']
 
 const VEHICLE_CATEGORIES = [
   { id: 'car',        label: 'Car',          sub: 'Hatchback, Sedan, Coupe', icon: Car      },
@@ -146,7 +147,7 @@ export default function StaticBookingWizard() {
     )
     const id = store.addBooking(bookingData)
     setTimeout(() => store.createInvoice(id), 100)
-    toast.success('Booking confirmed! 🎉')
+    toast.success(form.payment_method === 'pay_online_now' ? 'Booking created — complete payment to confirm' : 'Booking confirmed! 🎉')
     setStep(1); setForm(DEFAULTS); setColour('')
     setSelectedStation(''); setSelectedOil(''); setSelectedFuelType(''); setSelectedFuelAmount('')
     router.push('/bookings/' + id)
@@ -616,8 +617,59 @@ export default function StaticBookingWizard() {
           </FieldGroup>
         )}
 
-        {/* STEP 6 - Review */}
+        {/* STEP 6 - Payment Method */}
         {step === 6 && (
+          <FieldGroup>
+            <div>
+              <h2 className="title">How Would You Like to Pay?</h2>
+              <p className="caption mt-1">Choose the option that works best for you.</p>
+            </div>
+
+            <OptionCard selected={form.payment_method === 'pay_online_now'} onClick={() => update({ payment_method: 'pay_online_now' })}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--brand-subtle)' }}>
+                  <span className="text-xl">💳</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Pay Online Now</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Secure card payment — confirms your booking immediately.</p>
+                </div>
+              </div>
+            </OptionCard>
+
+            <OptionCard selected={form.payment_method === 'pos_on_pickup'} onClick={() => update({ payment_method: 'pos_on_pickup' })}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,122,255,0.12)' }}>
+                  <span className="text-xl">📟</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Pay via Point of Sale (on Pickup)</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Tap your card on our driver's card machine when your vehicle is collected.</p>
+                </div>
+              </div>
+            </OptionCard>
+
+            <OptionCard selected={form.payment_method === 'cash_on_pickup'} onClick={() => update({ payment_method: 'cash_on_pickup' })}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,149,0,0.12)' }}>
+                  <span className="text-xl">💵</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Cash on Pickup</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Pay cash to the driver when your vehicle is collected.</p>
+                </div>
+              </div>
+            </OptionCard>
+
+            <div className="flex gap-3 pt-1">
+              <button className="btn btn-secondary flex-1" onClick={() => setStep(5)}>← Back</button>
+              <button className="btn btn-primary flex-1" onClick={() => setStep(7)}>Continue →</button>
+            </div>
+          </FieldGroup>
+        )}
+
+        {/* STEP 7 - Review */}
+        {step === 7 && (
           <FieldGroup>
             <div>
               <h2 className="title">Review & Confirm</h2>
@@ -652,6 +704,10 @@ export default function StaticBookingWizard() {
                 {form.fuel_refill && selectedStation && selectedFuelType && selectedFuelAmount && (
                   <ReviewRow label={`${stationData?.label} — ${selectedFuelType}`} value={`R${fuelTotal}`} />
                 )}
+                <ReviewRow label="Payment" value={
+                  form.payment_method === 'pay_online_now' ? 'Pay Online Now' :
+                  form.payment_method === 'pos_on_pickup'  ? 'Pay via POS (Pickup)' : 'Cash on Pickup'
+                } />
                 <ReviewRow label="Total" value={formatZAR(grandTotal)} highlight last />
               </div>
             </div>
@@ -667,16 +723,16 @@ export default function StaticBookingWizard() {
               </p>
             </div>
             <div className="flex gap-3 pt-1">
-              <button className="btn btn-secondary flex-1" onClick={() => setStep(5)}>← Back</button>
+              <button className="btn btn-secondary flex-1" onClick={() => setStep(6)}>← Back</button>
               <button className="btn btn-primary flex-1 text-base py-4 font-bold" onClick={handleSubmit}>
-                Confirm & Pay {formatZAR(grandTotal)}
+                {form.payment_method === 'pay_online_now' ? `Continue to Payment` : `Confirm Booking — ${formatZAR(grandTotal)} Due`}
               </button>
             </div>
           </FieldGroup>
         )}
       </div>
 
-      {step < 6 && (
+      {step < 7 && (
         <div className="card px-5 py-3 flex items-center justify-between">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Estimated Total</span>
           <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{formatZAR(grandTotal || price.total)}</span>
