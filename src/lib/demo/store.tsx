@@ -59,9 +59,9 @@ export interface DemoBooking {
   cancellation_reason?:   string
   cancellation_fee?:      number
   edit_requested?:        boolean
-  payment_method?:        'pay_now' | 'pay_on_delivery'
+  payment_method?:        'pay_online_now' | 'pos_on_pickup' | 'cash_on_pickup'
   payment_collected?:     boolean
-  payment_collected_method?: 'cash' | 'card'
+  payment_collected_method?: 'cash' | 'card' | 'online'
 }
 
 export interface DemoDriver {
@@ -221,7 +221,7 @@ interface DemoStore {
   updateBookingDetails: (id: string, patch: Partial<DemoBooking>) => void
   assignDriver:         (bookingId: string, driverId: string) => void
   releaseDeliveryPin:   (bookingId: string) => void
-  markPaymentCollected: (bookingId: string, method: 'cash' | 'card') => void
+  markPaymentCollected: (bookingId: string, method: 'cash' | 'card' | 'online') => void
   addDriver:            (d: Omit<DemoDriver, 'id' | 'active_jobs'>) => void
   getBooking:           (id: string) => DemoBooking | undefined
   sendMessage:          (msg: Omit<DemoMessage, 'id' | 'time' | 'read'>) => void
@@ -358,7 +358,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const markPaymentCollected = useCallback((bookingId: string, method: 'cash' | 'card') => {
+  const markPaymentCollected = useCallback((bookingId: string, method: 'cash' | 'card' | 'online') => {
     update(d => ({
       ...d,
       bookings: d.bookings.map(b => b.id === bookingId
@@ -614,11 +614,13 @@ export function createBookingFromForm(
     fuel_amount:      fuelAmount,
     oil:              oilChoice,
     total,
-    status:           'pending_payment',
+    status:           form.payment_method === 'pay_online_now' ? 'pending_payment' : 'confirmed',
     driver_id:        null,
     pickup_pin:       String(Math.floor(100000 + Math.random() * 900000)),
     delivery_pin:     String(Math.floor(100000 + Math.random() * 900000)),
     delivery_pin_released: false,
     notes:            String(form.custom_detail_notes ?? ''),
+    payment_method:   (form.payment_method as 'pay_online_now' | 'pos_on_pickup' | 'cash_on_pickup') ?? 'cash_on_pickup',
+    payment_collected: false,
   }
 }
