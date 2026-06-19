@@ -458,15 +458,18 @@ export default function DriverJobPage() {
           )}
         </div>
 
-        {/* Release PIN button */}
+        {/* Release PIN button — this reveals the customer's PIN in THEIR app.
+            It does NOT generate a new PIN or hand anything to the driver. */}
         {status === 'delivery_arrived' && (
           <button className="btn btn-primary w-full py-3 font-bold"
             onClick={() => store.releaseDeliveryPin(id)}>
-            🔓 Release Delivery PIN to Customer
+            🔓 I've Arrived — Reveal PIN in Customer's App
           </button>
         )}
 
-        {/* Delivery PIN verify */}
+        {/* Delivery PIN verify — driver asks the CUSTOMER to read out their
+            PIN (now visible in the customer's app) and types it in here to
+            confirm it's really them before handing over the vehicle. */}
         {status === 'delivery_pin_released' && (
           <PinEntry
             title="Verify Delivery PIN"
