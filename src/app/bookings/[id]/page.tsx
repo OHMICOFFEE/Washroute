@@ -10,7 +10,6 @@ import type { WashPackageKey } from '@/lib/utils/pricing'
 import MessageThread from '@/components/messaging/MessageThread'
 import toast from 'react-hot-toast'
 import { CAR_MAKES, CAR_MAKES_MODELS, MOTORBIKE_MAKES, MOTORBIKE_MAKES_MODELS, VEHICLE_COLOURS } from '@/lib/utils/vehicles'
-import PayWithPayCloudButton from '@/components/payments/PayWithPayCloudButton'
 
 const LATE_CANCEL_FEE = 150
 
@@ -172,19 +171,44 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      {status === 'pending_payment' && (
-        <div className="card-elevated p-5 space-y-3" style={{ border: '2px solid var(--brand-primary)' }}>
+      {status === 'pending_payment' && booking.payment_method === 'pay_online_now' && (
+        <div className="card-elevated p-5 space-y-3" style={{ border: '2px solid var(--surface-border)' }}>
           <div>
-            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Payment Required</p>
+            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Online Payment — Coming Soon</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Complete payment to confirm your booking. We'll redirect you to our secure payment partner.
+              We're finishing setup with our payment partner. Please contact us to arrange payment for this booking, or switch to Pay on Pickup/Delivery.
             </p>
           </div>
-          <PayWithPayCloudButton
-            orderId={booking.id}
-            amount={booking.total}
-            description={`${booking.make} ${booking.model} — ${washLabel}`}
-          />
+          <button disabled className="w-full bg-gray-300 text-gray-500 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 cursor-not-allowed">
+            💳 Pay Online — Coming Soon
+          </button>
+        </div>
+      )}
+
+      {booking.payment_method && booking.payment_method !== 'pay_online_now' && status !== 'completed' && status !== 'cancelled' && (
+        <div className="card p-4 flex items-center gap-3"
+          style={{
+            background: booking.payment_collected ? 'rgba(52,199,89,0.06)' : 'rgba(255,149,0,0.06)',
+            border: `1.5px solid ${booking.payment_collected ? 'rgba(52,199,89,0.3)' : 'rgba(255,149,0,0.3)'}`,
+          }}>
+          <span className="text-xl">
+            {booking.payment_method === 'pos_on_pickup' ? '📟' : '💵'}
+          </span>
+          <div>
+            <p className="font-bold text-sm" style={{ color: booking.payment_collected ? '#34c759' : '#ff9500' }}>
+              {booking.payment_collected
+                ? `Payment Collected (${booking.payment_collected_method === 'card' ? 'card' : booking.payment_collected_method === 'online' ? 'online' : 'cash'}) ✓`
+                : booking.payment_method === 'pos_on_pickup' ? `Pay via Card Machine — ${formatZAR(booking.total)}`
+                : `Cash on Pickup — ${formatZAR(booking.total)}`}
+            </p>
+            {!booking.payment_collected && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {booking.payment_method === 'pos_on_pickup'
+                  ? 'Have your card ready — driver carries a card machine.'
+                  : 'Have cash ready when your driver arrives to collect.'}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
