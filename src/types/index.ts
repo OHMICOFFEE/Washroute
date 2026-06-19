@@ -117,6 +117,7 @@ export interface BookingFormState {
   fuel_type: FuelType | null; fuel_station: FuelStation | null; fuel_amount: FuelAmount | null
   tyre_pressure: boolean; water_topup: boolean; oil_check: boolean; oil_option: OilOption | null
   custom_detail_price?: number; custom_detail_notes?: string
+  payment_method: 'pay_online_now' | 'pos_on_pickup' | 'cash_on_pickup'
 }
 
 export interface PriceBreakdown {
