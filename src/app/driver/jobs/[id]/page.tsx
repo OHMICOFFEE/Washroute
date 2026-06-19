@@ -307,18 +307,55 @@ export default function DriverJobPage() {
 
         {/* PHASE 3 — Pickup PIN */}
         {pickupPhase === 'pin' && (
-          <PinEntry
-            title="Step 3 — Verify Pickup PIN"
-            subtitle="Ask the customer for their 6-digit pickup PIN"
-            value={pinInput}
-            onChange={setPinInput}
-            onSubmit={verifyPickupPin}
-            locked={pinLocked}
-            attempts={pinAttempts}
-            maxAttempts={3}
-            customerCell={booking.customer_name}
-            onBack={() => setPickupPhase('waiver')}
-          />
+          <>
+            {(booking.payment_method === 'cash_on_pickup' || booking.payment_method === 'pos_on_pickup') && !booking.payment_collected && (
+              <div className="card-elevated p-5 space-y-3" style={{ border: '2px solid #ff9500' }}>
+                <div>
+                  <p className="font-bold text-sm" style={{ color: '#ff9500' }}>
+                    {booking.payment_method === 'pos_on_pickup' ? '📟 Collect Card Payment First' : '💵 Collect Cash Payment First'}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    Collect <span className="font-bold">R{booking.total}</span> before completing pickup.
+                  </p>
+                </div>
+                {booking.payment_method === 'pos_on_pickup' ? (
+                  <button className="btn w-full py-3 font-bold" style={{ background: '#007aff', color: '#fff' }}
+                    onClick={() => { store.markPaymentCollected(id, 'card'); toast.success('Card payment recorded') }}>
+                    💳 Card Collected
+                  </button>
+                ) : (
+                  <button className="btn w-full py-3 font-bold" style={{ background: '#34c759', color: '#fff' }}
+                    onClick={() => { store.markPaymentCollected(id, 'cash'); toast.success('Cash payment recorded') }}>
+                    💵 Cash Collected
+                  </button>
+                )}
+              </div>
+            )}
+
+            {(booking.payment_method === 'cash_on_pickup' || booking.payment_method === 'pos_on_pickup') && booking.payment_collected && (
+              <div className="card p-3 flex items-center gap-2" style={{ background: 'rgba(52,199,89,0.08)', border: '1px solid rgba(52,199,89,0.3)' }}>
+                <CheckCircle className="w-4 h-4 shrink-0" style={{ color: '#34c759' }} />
+                <p className="text-xs font-semibold" style={{ color: '#34c759' }}>
+                  Payment collected ({booking.payment_collected_method === 'card' ? 'card' : 'cash'}) ✓
+                </p>
+              </div>
+            )}
+
+            {((booking.payment_method !== 'cash_on_pickup' && booking.payment_method !== 'pos_on_pickup') || booking.payment_collected) && (
+              <PinEntry
+                title="Step 3 — Verify Pickup PIN"
+                subtitle="Ask the customer for their 6-digit pickup PIN"
+                value={pinInput}
+                onChange={setPinInput}
+                onSubmit={verifyPickupPin}
+                locked={pinLocked}
+                attempts={pinAttempts}
+                maxAttempts={3}
+                customerCell={booking.customer_name}
+                onBack={() => setPickupPhase('waiver')}
+              />
+            )}
+          </>
         )}
       </div>
     </JobLayout>
