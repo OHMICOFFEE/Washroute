@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${brand.name} — ${brand.tagline}`,
     description: `${brand.name}: ${brand.tagline}`,
-    themeColor: '#f5f5f7',
+    themeColor: brand.cssVars['--surface-bg'] ?? '#f5f5f7',
     icons: brand.faviconUrl ? { icon: brand.faviconUrl } : undefined,
   }
 }
