@@ -12,6 +12,7 @@ export interface DemoBooking {
   id:               string
   created_at:       string
   customer_name:    string
+  customer_cell?:   string
   vehicle_type:     string
   make:             string
   model:            string
@@ -512,7 +513,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       id: generateId(), invoice_number: invoiceNum, booking_id: bookingId,
       customer_id:    profile?.id ?? 'guest',
       customer_name:  profile ? `${profile.first_name} ${profile.last_name}` : booking.customer_name,
-      customer_cell:  profile?.cell ?? '',
+      customer_cell:  booking.customer_cell || profile?.cell || '',
       customer_email: profile?.email ?? '',
       items, subtotal: subtotalVat, vat, total: booking.total,
       status: 'unpaid', created_at: now(), paid_at: null,
