@@ -223,6 +223,7 @@ interface DemoStore {
   assignDriver:         (bookingId: string, driverId: string) => void
   releaseDeliveryPin:   (bookingId: string) => void
   markPaymentCollected: (bookingId: string, method: 'cash' | 'card' | 'online') => void
+  regeneratePin:        (bookingId: string, which: 'pickup' | 'delivery') => string
   addDriver:            (d: Omit<DemoDriver, 'id' | 'active_jobs'>) => void
   getBooking:           (id: string) => DemoBooking | undefined
   sendMessage:          (msg: Omit<DemoMessage, 'id' | 'time' | 'read'>) => void
@@ -367,6 +368,20 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         : b
       ),
     }))
+  }, [])
+
+  const regeneratePin = useCallback((bookingId: string, which: 'pickup' | 'delivery'): string => {
+    const newPin = String(Math.floor(100000 + Math.random() * 900000))
+    update(d => ({
+      ...d,
+      bookings: d.bookings.map(b => {
+        if (b.id !== bookingId) return b
+        return which === 'pickup'
+          ? { ...b, pickup_pin: newPin, pin_attempts: 0, pin_locked: false }
+          : { ...b, delivery_pin: newPin, delivery_pin_attempts: 0, delivery_pin_locked: false }
+      }),
+    }))
+    return newPin
   }, [])
 
   const addDriver = useCallback((d: Omit<DemoDriver, 'id' | 'active_jobs'>) => {
@@ -558,7 +573,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     <DemoContext.Provider value={{
       ...data,
       addBooking, updateBookingStatus, updateBookingDetails,
-      assignDriver, releaseDeliveryPin, markPaymentCollected, addDriver, getBooking,
+      assignDriver, releaseDeliveryPin, markPaymentCollected, regeneratePin, addDriver, getBooking,
       sendMessage, getMessages, markMessagesRead, unreadCount, updatePricing,
       addCredit, useCredit, getActiveCredits,
       addStaff, updateStaff, deleteStaff, clockIn, clockOut, updateTimeEntry, approveTimeEntry, deleteTimeEntry, getStaffEntries,
