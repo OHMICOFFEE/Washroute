@@ -350,3 +350,292 @@ export default function DriverJobPage() {
                 attempts={pinAttempts}
                 maxAttempts={3}
                 customerCell={booking.customer_name}
+                onBack={() => setPickupPhase('waiver')}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </JobLayout>
+  )
+
+  // Vehicle collected → at facility
+  if (status === 'vehicle_collected') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4">
+        <StatusCard status="Vehicle Collected" color="#34c759" />
+        <InfoGrid booking={booking} odometerOut={booking.odometer_out} fuelLevel={booking.fuel_level} />
+        <button className="btn btn-primary w-full py-4 font-bold text-base" onClick={() => advance('at_wash_facility')}>
+          🏭 Arrived at Wash Facility
+        </button>
+      </div>
+    </JobLayout>
+  )
+
+  // At facility
+  if (status === 'at_wash_facility') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4">
+        <StatusCard status="At Facility" color="#007aff" />
+        <InfoGrid booking={booking} />
+        <button className="btn btn-primary w-full py-4 font-bold text-base" onClick={() => advance('wash_in_progress')}>
+          🚿 Start Wash
+        </button>
+      </div>
+    </JobLayout>
+  )
+
+  // Wash in progress — concierge actuals
+  if (status === 'wash_in_progress') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4">
+        <StatusCard status="Washing" color="#007aff" />
+        {booking.concierge && (
+          <div className="card-elevated p-5 space-y-3">
+            <p className="heading">Concierge Actuals</p>
+            {booking.fuel_refill && (
+              <div className="flex flex-col gap-1.5">
+                <label className="label">Actual Fuel Cost (R)</label>
+                <input className="input" type="number" value={actualFuel}
+                  onChange={e => setActualFuel(e.target.value)}
+                  placeholder={`Quoted: R${booking.fuel_amount}`} inputMode="numeric" />
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="label">Oil Check Result</label>
+              <select className="input" value={actualOil} onChange={e => setActualOil(e.target.value)}>
+                <option value="">Select...</option>
+                <option value="OK">Oil level OK — no top-up needed</option>
+                <option value="topped">Oil topped up</option>
+                <option value="low">Oil low — customer to be notified</option>
+              </select>
+            </div>
+            <button className="btn btn-primary w-full text-sm py-2.5" onClick={() => {
+              const fuelCost = parseFloat(actualFuel) || 0
+              const quoted   = parseFloat(booking.fuel_amount) || 0
+              const credit   = quoted > fuelCost ? quoted - fuelCost : 0
+              store.updateBookingDetails(id, { actual_fuel_cost: fuelCost, actual_oil_cost: 0, fuel_credit: credit })
+              if (credit > 0) {
+                store.addCredit({ booking_id: id, customer_name: booking.customer_name, amount: credit, reason: `Fuel underfill credit from booking #${id}` })
+                toast.success(`R${credit.toFixed(0)} credit issued to customer`)
+              } else {
+                toast.success('Actuals saved')
+              }
+            }}>
+              Save Concierge Actuals
+            </button>
+          </div>
+        )}
+        <button className="btn btn-primary w-full py-4 font-bold text-base" onClick={() => advance('returning_vehicle')}>
+          🚗 Start Return Journey
+        </button>
+      </div>
+    </JobLayout>
+  )
+
+  // Returning
+  if (status === 'returning_vehicle') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4">
+        <StatusCard status="Returning Vehicle" color="#ff9500" />
+        <div className="card p-4 flex items-center gap-3" style={{ background:'rgba(0,122,255,0.06)' }}>
+          <Navigation className="w-5 h-5 shrink-0" style={{ color:'#007aff' }} />
+          <div>
+            <p className="font-semibold text-sm" style={{ color:'var(--text-primary)' }}>Navigating to delivery</p>
+            <p className="text-xs mt-0.5 truncate" style={{ color:'var(--text-secondary)' }}>{booking.delivery_address}</p>
+          </div>
+        </div>
+        <button className="btn btn-primary w-full py-4 font-bold text-base" onClick={() => advance('delivery_arrived')}>
+          ✅ Arrived at Delivery Location
+        </button>
+      </div>
+    </JobLayout>
+  )
+
+  // Delivery arrived — photos + odometer in + delivery PIN
+  if (status === 'delivery_arrived' || status === 'delivery_pin_released') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4">
+        <StatusCard status="Delivery" color="#34c759" />
+
+        {/* After-wash photos */}
+        <div className="card p-4 space-y-3">
+          <p className="heading">After-Wash Photos</p>
+          <div className="grid grid-cols-3 gap-2">
+            {deliveryPhotos.map((_, i) => (
+              <div key={i} className="aspect-square rounded-xl flex items-center justify-center"
+                style={{ background:'rgba(52,199,89,0.12)' }}>
+                <span className="text-2xl">📸</span>
+              </div>
+            ))}
+            {deliveryPhotos.length < 6 && (
+              <button onClick={addDeliveryPhoto}
+                className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1 border-2 border-dashed"
+                style={{ borderColor:'var(--brand-primary)', background:'var(--brand-subtle)' }}>
+                <Camera className="w-6 h-6" style={{ color:'var(--brand-primary)' }} />
+                <span className="text-xs" style={{ color:'var(--brand-primary)' }}>Add</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Odometer return */}
+        <div className="card p-4 space-y-3">
+          <p className="font-semibold text-sm flex items-center gap-2" style={{ color:'var(--text-primary)' }}>
+            <Gauge className="w-4 h-4" style={{ color:'var(--brand-primary)' }} /> Return Odometer
+          </p>
+          <input className="input" value={odometerIn} onChange={e => setOdometerIn(e.target.value)}
+            placeholder="Odometer reading on return (km)" inputMode="numeric" />
+          {booking.odometer_out && odometerIn && (
+            <p className="text-xs" style={{ color:'var(--text-secondary)' }}>
+              Distance: {Math.abs(parseInt(odometerIn) - parseInt(booking.odometer_out))} km
+            </p>
+          )}
+        </div>
+
+        {/* Release PIN button — this reveals the customer's PIN in THEIR app.
+            It does NOT generate a new PIN or hand anything to the driver. */}
+        {status === 'delivery_arrived' && (
+          <button className="btn btn-primary w-full py-3 font-bold"
+            onClick={() => store.releaseDeliveryPin(id)}>
+            🔓 I've Arrived — Reveal PIN in Customer's App
+          </button>
+        )}
+
+        {/* Delivery PIN verify — driver asks the CUSTOMER to read out their
+            PIN (now visible in the customer's app) and types it in here to
+            confirm it's really them before handing over the vehicle. */}
+        {status === 'delivery_pin_released' && (
+          <PinEntry
+            title="Verify Delivery PIN"
+            subtitle="Ask the customer for their delivery PIN to hand over the vehicle"
+            value={deliveryPin}
+            onChange={setDeliveryPin}
+            onSubmit={verifyDeliveryPin}
+            locked={deliveryPinLocked}
+            attempts={deliveryPinAttempts}
+            maxAttempts={3}
+            customerCell={booking.customer_name}
+          />
+        )}
+      </div>
+    </JobLayout>
+  )
+
+  // Completed
+  if (status === 'completed') return (
+    <JobLayout booking={booking} router={router}>
+      <div className="space-y-4 text-center py-8">
+        <CheckCircle className="w-16 h-16 mx-auto" style={{ color:'#34c759' }} />
+        <h2 className="title">Job Complete! 🎉</h2>
+        <p className="caption">Vehicle successfully returned to customer.</p>
+        <button className="btn btn-primary w-full py-3" onClick={() => router.push('/driver')}>Back to Jobs</button>
+      </div>
+    </JobLayout>
+  )
+
+  return (
+    <JobLayout booking={booking} router={router}>
+      <div className="card p-8 text-center">
+        <p className="heading">Status: {status}</p>
+        <button className="btn btn-secondary mt-4" onClick={() => router.push('/driver')}>← Back</button>
+      </div>
+    </JobLayout>
+  )
+}
+
+// ── Sub-components ──
+
+function JobLayout({ booking, router, children }: { booking: ReturnType<typeof useDemoStore>['bookings'][0]; router: ReturnType<typeof useRouter>; children: React.ReactNode }) {
+  return (
+    <div className="space-y-4 anim-fadeup pb-8">
+      <div className="pt-2">
+        <button onClick={() => router.push('/driver')} className="flex items-center gap-1 text-sm font-medium mb-3" style={{ color:'var(--brand-primary)' }}>
+          <ChevronLeft className="w-4 h-4" /> Jobs
+        </button>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="title">{booking.make} {booking.model}</h1>
+            <p className="caption mt-0.5">{booking.registration} · {booking.colour}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-sm font-bold" style={{ color:'var(--brand-primary)' }}>{booking.booking_date}</p>
+            <p className="text-xs" style={{ color:'var(--text-tertiary)' }}>{booking.pickup_time}</p>
+          </div>
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function StatusCard({ status, color }: { status: string; color: string }) {
+  return (
+    <div className="card p-4 flex items-center gap-3" style={{ background:`${color}08`, border:`1.5px solid ${color}30` }}>
+      <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: color }} />
+      <p className="font-bold text-sm" style={{ color }}>{status}</p>
+    </div>
+  )
+}
+
+function InfoGrid({ booking, odometerOut, fuelLevel }: { booking: ReturnType<typeof useDemoStore>['bookings'][0]; odometerOut?: string; fuelLevel?: string }) {
+  return (
+    <div className="list-group">
+      <div className="list-item"><Car className="w-4 h-4 shrink-0" style={{ color:'var(--text-tertiary)' }} /><div className="flex-1"><p className="text-xs" style={{ color:'var(--text-tertiary)' }}>Pickup</p><p className="text-sm font-medium truncate" style={{ color:'var(--text-primary)' }}>{booking.pickup_address}</p></div></div>
+      <div className="list-item"><Car className="w-4 h-4 shrink-0" style={{ color:'var(--text-tertiary)' }} /><div className="flex-1"><p className="text-xs" style={{ color:'var(--text-tertiary)' }}>Delivery</p><p className="text-sm font-medium truncate" style={{ color:'var(--text-primary)' }}>{booking.delivery_address}</p></div></div>
+      {odometerOut && <div className="list-item"><Gauge className="w-4 h-4 shrink-0" style={{ color:'var(--text-tertiary)' }} /><div className="flex-1"><p className="text-xs" style={{ color:'var(--text-tertiary)' }}>Odometer Out</p><p className="text-sm font-medium" style={{ color:'var(--text-primary)' }}>{odometerOut} km{fuelLevel ? ` · Fuel: ${fuelLevel}` : ''}</p></div></div>}
+      {booking.odometer_in && <div className="list-item" style={{ borderBottom:'none' }}><Gauge className="w-4 h-4 shrink-0" style={{ color:'var(--text-tertiary)' }} /><div className="flex-1"><p className="text-xs" style={{ color:'var(--text-tertiary)' }}>Odometer In</p><p className="text-sm font-medium" style={{ color:'var(--text-primary)' }}>{booking.odometer_in} km</p></div></div>}
+    </div>
+  )
+}
+
+function PinEntry({ title, subtitle, value, onChange, onSubmit, locked, attempts, maxAttempts, customerCell, onBack }: {
+  title: string; subtitle: string; value: string; onChange: (v: string) => void
+  onSubmit: () => void; locked: boolean; attempts: number; maxAttempts: number
+  customerCell: string; onBack?: () => void
+}) {
+  if (locked) return (
+    <div className="space-y-4">
+      <div className="card p-6 text-center space-y-3" style={{ border:'2px solid #ff3b30', background:'rgba(255,59,48,0.04)' }}>
+        <AlertTriangle className="w-10 h-10 mx-auto" style={{ color:'#ff3b30' }} />
+        <h3 className="heading" style={{ color:'#ff3b30' }}>PIN Locked</h3>
+        <p className="text-sm" style={{ color:'var(--text-secondary)' }}>
+          {maxAttempts} incorrect attempts. Contact the customer or administrator to proceed.
+        </p>
+      </div>
+      <a href={`tel:${customerCell}`} className="btn w-full py-3 font-bold flex items-center justify-center gap-2"
+        style={{ background:'#34c759', color:'#fff' }}>
+        <Phone className="w-5 h-5" /> Call Customer
+      </a>
+      <a href="tel:0800000000" className="btn btn-secondary w-full py-3 font-bold flex items-center justify-center gap-2">
+        <Phone className="w-5 h-5" /> Call Admin
+      </a>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="heading">{title}</h2>
+        <p className="text-sm mt-1" style={{ color:'var(--text-secondary)' }}>{subtitle}</p>
+      </div>
+      {attempts > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background:'rgba(255,59,48,0.06)', border:'1px solid rgba(255,59,48,0.2)' }}>
+          <AlertTriangle className="w-4 h-4 shrink-0" style={{ color:'#ff3b30' }} />
+          <p className="text-xs font-medium" style={{ color:'#ff3b30' }}>
+            {attempts} incorrect attempt{attempts > 1 ? 's' : ''} — {maxAttempts - attempts} remaining before lock
+          </p>
+        </div>
+      )}
+      <input className="input text-2xl text-center tracking-widest font-bold py-4"
+        value={value} onChange={e => onChange(e.target.value.replace(/\D/g,'').slice(0,6))}
+        placeholder="• • • • • •" inputMode="numeric" maxLength={6} />
+      <div className="flex gap-3">
+        {onBack && <button className="btn btn-secondary" onClick={onBack}>← Back</button>}
+        <button className="btn btn-primary flex-1 py-3 font-bold" onClick={onSubmit} disabled={value.length !== 6}>
+          Verify PIN
+        </button>
+      </div>
+    </div>
+  )
+}
