@@ -5,7 +5,7 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import type { BookingStatus } from '@/types'
 import { formatZAR, WASH_PACKAGE_LABELS } from '@/lib/utils/pricing'
 import type { WashPackageKey } from '@/lib/utils/pricing'
-import { Car, UserCheck, ChevronDown, MessageCircle, ChevronUp } from 'lucide-react'
+import { Car, UserCheck, ChevronDown, MessageCircle, ChevronUp, KeyRound, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import MessageThread from '@/components/messaging/MessageThread'
 
@@ -28,6 +28,11 @@ export default function AdminBookingsPage() {
     if (!driverId) { toast.error('Select a driver first'); return }
     store.assignDriver(bookingId, driverId)
     toast.success('Driver assigned!')
+  }
+
+  function handleRegeneratePin(bookingId: string, which: 'pickup' | 'delivery') {
+    const newPin = store.regeneratePin(bookingId, which)
+    toast.success(`New ${which} PIN generated: ${newPin}`)
   }
 
   return (
@@ -112,6 +117,51 @@ export default function AdminBookingsPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Fuel: R{b.actual_fuel_cost} (requested R{b.fuel_amount})</p>
                     {b.fuel_credit && b.fuel_credit > 0 && <p style={{ color: '#007aff' }}>💳 Credit owed to customer: R{b.fuel_credit}</p>}
                     {b.actual_oil_cost && <p style={{ color: 'var(--text-secondary)' }}>Oil: R{b.actual_oil_cost}</p>}
+                  </div>
+                )}
+
+                {/* PIN management */}
+                {!['completed', 'cancelled', 'pending_payment'].includes(b.status) && (
+                  <div className="p-3 rounded-xl space-y-2" style={{ background: 'var(--surface-inset)' }}>
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+                      <p className="label" style={{ fontSize: '10px' }}>Security PINs</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-lg"
+                        style={{ background: 'var(--surface-card)', border: b.pin_locked ? '1.5px solid #ff3b30' : '1px solid var(--surface-border)' }}>
+                        <div>
+                          <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Pickup</p>
+                          <p className="text-sm font-bold tracking-wide" style={{ color: b.pin_locked ? '#ff3b30' : 'var(--text-primary)' }}>
+                            {b.pin_locked ? 'LOCKED' : b.pickup_pin}
+                          </p>
+                        </div>
+                        <button onClick={() => handleRegeneratePin(b.id, 'pickup')}
+                          className="p-1.5 rounded-lg shrink-0" style={{ background: 'var(--brand-subtle)' }}
+                          title="Regenerate pickup PIN">
+                          <RefreshCw className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-lg"
+                        style={{ background: 'var(--surface-card)', border: b.delivery_pin_locked ? '1.5px solid #ff3b30' : '1px solid var(--surface-border)' }}>
+                        <div>
+                          <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Delivery</p>
+                          <p className="text-sm font-bold tracking-wide" style={{ color: b.delivery_pin_locked ? '#ff3b30' : 'var(--text-primary)' }}>
+                            {b.delivery_pin_locked ? 'LOCKED' : (b.delivery_pin_released ? b.delivery_pin : '••••••')}
+                          </p>
+                        </div>
+                        <button onClick={() => handleRegeneratePin(b.id, 'delivery')}
+                          className="p-1.5 rounded-lg shrink-0" style={{ background: 'var(--brand-subtle)' }}
+                          title="Regenerate delivery PIN">
+                          <RefreshCw className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+                        </button>
+                      </div>
+                    </div>
+                    {(b.pin_locked || b.delivery_pin_locked) && (
+                      <p className="text-xs" style={{ color: '#ff3b30' }}>
+                        ⚠️ Locked after 3 failed attempts. Tap refresh to generate a new PIN and unlock — share it with the customer/driver directly.
+                      </p>
+                    )}
                   </div>
                 )}
 
