@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { WASH_PACKAGE_LABELS, WASH_PRICES, COLLECTION_FEE } from '@/lib/utils/pricing'
 import type { WashPackageKey } from '@/lib/utils/pricing'
 import { CAR_MAKES, CAR_MAKES_MODELS, MOTORBIKE_MAKES, MOTORBIKE_MAKES_MODELS, VEHICLE_COLOURS } from '@/lib/utils/vehicles'
-import { Car, ClipboardList, Plus, Check } from 'lucide-react'
+import { Car, ClipboardList, Plus, Check, QrCode, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
@@ -52,6 +52,13 @@ export default function WalkInRegistryPage() {
       make: '', model: '', colour: '', registration: '',
       wash_package: 'full_house', payment_method: 'cash_on_pickup', notes: '',
     })
+  }
+
+  function copyCheckInLink() {
+    const url = `${window.location.origin}/checkin`
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Check-in link copied!'))
+      .catch(() => toast.error('Could not copy — link is /checkin'))
   }
 
   function logWalkIn() {
@@ -119,6 +126,21 @@ export default function WalkInRegistryPage() {
         </div>
         <button onClick={() => setShowForm(v => !v)} className="btn btn-primary py-2 px-4 text-sm flex items-center gap-1.5 shrink-0">
           <Plus className="w-4 h-4" /> {showForm ? 'Cancel' : 'Log Vehicle'}
+        </button>
+      </div>
+
+      <div className="card-elevated p-4 flex items-center gap-3" style={{ border: '1.5px solid rgba(0,122,255,0.25)', background: 'rgba(0,122,255,0.04)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,122,255,0.12)' }}>
+          <QrCode className="w-5 h-5" style={{ color: '#007aff' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Self Check-In Link</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Customers can check themselves in via QR code or this link — no login needed.
+          </p>
+        </div>
+        <button onClick={copyCheckInLink} className="btn btn-secondary py-2 px-3 text-xs font-semibold shrink-0 flex items-center gap-1.5">
+          <Copy className="w-3.5 h-3.5" /> Copy Link
         </button>
       </div>
 
