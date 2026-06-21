@@ -89,12 +89,12 @@ body {
 .input:focus {
   border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px var(--brand-subtle);
-  background: #fff;
+  background: var(--surface-inset);
 }
 .input::placeholder { color: var(--text-tertiary); }
 .input:disabled { opacity: 0.4; cursor: not-allowed; }
 select.input { cursor: pointer; }
-select.input option { background: #fff; color: var(--text-primary); }
+select.input option { background: var(--surface-card); color: var(--text-primary); }
 textarea.input { resize: vertical; min-height: 80px; }
 
 /* ─── Buttons ───────────────────────────────────────────────── */
@@ -130,7 +130,7 @@ textarea.input { resize: vertical; min-height: 80px; }
   color: var(--text-primary);
   border: 1.5px solid var(--surface-border);
 }
-.btn-secondary:hover:not(:disabled) { background: rgba(0,0,0,0.06); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-inset); }
 
 .btn-ghost {
   background: transparent;
@@ -152,7 +152,7 @@ textarea.input { resize: vertical; min-height: 80px; }
   cursor: pointer;
   transition: all 0.15s;
 }
-.option-card:hover { border-color: rgba(0,0,0,0.2); background: rgba(0,0,0,0.01); }
+.option-card:hover { border-color: var(--brand-border); background: var(--surface-inset); }
 .option-card.selected {
   border-color: var(--brand-primary) !important;
   background: var(--brand-subtle) !important;
@@ -176,7 +176,7 @@ textarea.input { resize: vertical; min-height: 80px; }
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255,255,255,0.92);
+  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--surface-border);
@@ -191,7 +191,7 @@ textarea.input { resize: vertical; min-height: 80px; }
   left: 0;
   right: 0;
   height: 60px;
-  background: rgba(255,255,255,0.92);
+  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--surface-border);
@@ -259,7 +259,7 @@ textarea.input { resize: vertical; min-height: 80px; }
   color: var(--text-primary);
 }
 .pin-box.revealed {
-  background: #fff;
+  background: var(--surface-card);
   border-color: var(--brand-primary);
   color: var(--brand-primary);
 }
