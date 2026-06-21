@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutGrid, Plus, Car, Users, Settings, ChevronRight, Briefcase, UserCircle, Clock, FileText, CreditCard } from 'lucide-react'
+import { LayoutGrid, Plus, Car, Users, Settings, ChevronRight, Briefcase, UserCircle, Clock, FileText, CreditCard, ClipboardList } from 'lucide-react'
 import { useBrand } from './BrandProvider'
 import BrandLogo from './BrandLogo'
 import Image from 'next/image'
@@ -19,6 +19,7 @@ const navMap = {
   admin: [
     { href: '/admin',          label: 'Overview', icon: LayoutGrid },
     { href: '/admin/bookings', label: 'Bookings', icon: Car        },
+    { href: '/admin/registry', label: 'Registry', icon: ClipboardList },
     { href: '/admin/drivers',  label: 'Drivers',  icon: Users      },
     { href: '/admin/services',   label: 'Services',   icon: Settings   },
     { href: '/admin/workforce',  label: 'Workforce',  icon: Briefcase  },
