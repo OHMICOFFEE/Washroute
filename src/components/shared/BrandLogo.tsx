@@ -19,7 +19,8 @@ export default function BrandLogo({ size = 'md', showName = true, className = ''
     <div className={`flex items-center gap-2 ${className}`}>
       {brand.logoUrl ? (
         <Image src={brand.logoUrl} alt={brand.name} width={imgSizes[size]} height={imgSizes[size]}
-          className={`${iconSizes[size]} object-contain`} priority />
+          className={`${iconSizes[size]} object-contain`} priority
+          style={{ filter: 'drop-shadow(0 0 8px var(--brand-glow))' }} />
       ) : (
         <div className={`${iconSizes[size]} rounded-2xl flex items-center justify-center`}
           style={{ background: 'var(--brand-primary)' }}>
