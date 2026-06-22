@@ -96,6 +96,15 @@ export interface WashCredit {
   used_at?:      string
 }
 
+export interface PunchCard {
+  id:            string
+  customer_name: string
+  stamps:        number
+  total_earned:  number
+  last_stamp_at: string
+  free_wash_available: boolean
+}
+
 export interface StaffMember {
   id:               string
   first_name:       string
@@ -211,6 +220,9 @@ interface DemoStore {
   messages:             DemoMessage[]
   customPrices:         Record<string, number>
   credits:              WashCredit[]
+  punchCard:            PunchCard | null
+  addStamp:             () => void
+  redeemPunchCard:      () => void
   staff:                StaffMember[]
   timeEntries:          TimeEntry[]
   customerProfile:      CustomerProfile | null
@@ -284,13 +296,14 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     messages:        DemoMessage[]
     customPrices:    Record<string, number>
     credits:         WashCredit[]
+    punchCard:       PunchCard | null
     staff:           StaffMember[]
     timeEntries:     TimeEntry[]
     customerProfile: CustomerProfile | null
     invoices:        Invoice[]
     savedVehicles:   SavedVehicle[]
     paymentRequests: PaymentRequest[]
-  }>({ bookings: [], drivers: [], messages: [], customPrices: {}, credits: [], staff: [], timeEntries: [], customerProfile: null, invoices: [], savedVehicles: [], paymentRequests: [] })
+  }>({ bookings: [], drivers: [], messages: [], customPrices: {}, credits: [], staff: [], timeEntries: [], customerProfile: null, invoices: [], savedVehicles: [], paymentRequests: [], punchCard: null })
 
   useEffect(() => {
     const loaded = load()
@@ -298,13 +311,13 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       setData({
         bookings: [], drivers: [], messages: [], customPrices: {},
         credits: [], staff: [], timeEntries: [], customerProfile: null,
-        invoices: [], savedVehicles: [], paymentRequests: [],
+        invoices: [], savedVehicles: [], paymentRequests: [], punchCard: null,
         ...loaded,
       })
     } else {
       setData({
         bookings: [], messages: [], customPrices: {}, credits: [],
-        staff: [], timeEntries: [], customerProfile: null,
+        staff: [], timeEntries: [], customerProfile: null, punchCard: null,
         invoices: [], savedVehicles: [], paymentRequests: [],
         drivers: [
           { id: 'driver-1', name: 'John Mokoena',  email: 'john@speedwash.co.za',  available: true, active_jobs: 0 },
@@ -326,13 +339,30 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateBookingStatus = useCallback((id: string, status: DemoBookingStatus, by = 'System') => {
-    update(d => ({
-      ...d,
-      bookings: d.bookings.map(b => b.id === id
+    update(d => {
+      const updatedBookings = d.bookings.map(b => b.id === id
         ? { ...b, status, status_history: [...b.status_history, { status, time: now(), by }] }
         : b
-      ),
-    }))
+      )
+
+      // Auto-stamp punch card when a booking completes
+      if (status === 'completed') {
+        const current = d.punchCard
+        const stamps = (current?.stamps ?? 0) + 1
+        const free_wash_available = stamps >= 3
+        const card: PunchCard = {
+          id:                  current?.id ?? generateId(),
+          customer_name:       d.customerProfile ? `${d.customerProfile.first_name} ${d.customerProfile.last_name}` : 'Customer',
+          stamps,
+          total_earned:        (current?.total_earned ?? 0) + (free_wash_available && !current?.free_wash_available ? 1 : 0),
+          last_stamp_at:       now(),
+          free_wash_available: free_wash_available || (current?.free_wash_available ?? false),
+        }
+        return { ...d, bookings: updatedBookings, punchCard: card }
+      }
+
+      return { ...d, bookings: updatedBookings }
+    })
   }, [])
 
   const updateBookingDetails = useCallback((id: string, patch: Partial<DemoBooking>) => {
@@ -433,6 +463,37 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
 
   const useCredit = useCallback((id: string) => {
     update(d => ({ ...d, credits: d.credits.map(c => c.id === id ? { ...c, used: true, used_at: now() } : c) }))
+  }, [])
+
+  const addStamp = useCallback(() => {
+    update(d => {
+      const current = d.punchCard
+      const stamps = (current?.stamps ?? 0) + 1
+      const free_wash_available = stamps >= 3
+      const card: PunchCard = {
+        id:                  current?.id ?? generateId(),
+        customer_name:       d.customerProfile ? `${d.customerProfile.first_name} ${d.customerProfile.last_name}` : 'Customer',
+        stamps,
+        total_earned:        (current?.total_earned ?? 0) + (free_wash_available ? 1 : 0),
+        last_stamp_at:       now(),
+        free_wash_available: free_wash_available,
+      }
+      return { ...d, punchCard: card }
+    })
+  }, [])
+
+  const redeemPunchCard = useCallback(() => {
+    update(d => {
+      if (!d.punchCard?.free_wash_available) return d
+      return {
+        ...d,
+        punchCard: {
+          ...d.punchCard,
+          stamps: 0,
+          free_wash_available: false,
+        },
+      }
+    })
   }, [])
 
   const getActiveCredits = useCallback((customerName?: string) => {
@@ -575,7 +636,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       addBooking, updateBookingStatus, updateBookingDetails,
       assignDriver, releaseDeliveryPin, markPaymentCollected, regeneratePin, addDriver, getBooking,
       sendMessage, getMessages, markMessagesRead, unreadCount, updatePricing,
-      addCredit, useCredit, getActiveCredits,
+      addCredit, useCredit, getActiveCredits, addStamp, redeemPunchCard,
       addStaff, updateStaff, deleteStaff, clockIn, clockOut, updateTimeEntry, approveTimeEntry, deleteTimeEntry, getStaffEntries,
       setCustomerProfile, updateCustomerProfile, createInvoice, getInvoice, markInvoicePaid,
       savedVehicles: data.savedVehicles ?? [], addSavedVehicle, updateSavedVehicle, deleteSavedVehicle,
