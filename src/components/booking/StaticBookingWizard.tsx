@@ -133,6 +133,17 @@ export default function StaticBookingWizard() {
   const grandTotal  = price.wash_price + price.extras_total + COLLECTION_FEE +
     (form.concierge_selected ? CONCIERGE_FEE : 0) + fuelTotal
 
+  // Loyalty & credits
+  const punchCard       = store.punchCard
+  const freeWashReady   = punchCard?.free_wash_available ?? false
+  const activeCredits   = store.getActiveCredits()
+  const totalCredit     = activeCredits.reduce((s, c) => s + c.amount, 0)
+  const [useCredit, setUseCredit]     = useState(false)
+  const [useFreeWash, setUseFreeWash] = useState(false)
+  const creditApplied   = useCredit ? Math.min(totalCredit, grandTotal) : 0
+  const freeWashApplied = useFreeWash && freeWashReady ? Math.max(0, grandTotal - creditApplied) : 0
+  const finalTotal      = Math.max(0, grandTotal - creditApplied - freeWashApplied)
+
   function handleCategoryChange(cat: VehicleCategory) {
     update({ vehicle_category: cat, vehicle_type: cat === 'motorbike' ? 'motorbike' : 'car_suv_bakkie', make: '', model: '', wash_package: 'full_house' })
   }
@@ -142,13 +153,30 @@ export default function StaticBookingWizard() {
     const extraNames   = form.extras.map(e => EXTRA_LABEL_MAP[e] ?? e)
     const bookingData  = createBookingFromForm(
       form as unknown as Record<string, unknown>,
-      extraNames, grandTotal, colour, stationLabel,
+      extraNames, finalTotal, colour, stationLabel,
       selectedFuelType, selectedFuelAmount, selectedOil,
     )
     const id = store.addBooking(bookingData)
     setTimeout(() => store.createInvoice(id), 100)
+
+    // Apply credits used
+    if (useCredit && creditApplied > 0) {
+      let remaining = creditApplied
+      for (const credit of activeCredits) {
+        if (remaining <= 0) break
+        store.useCredit(credit.id)
+        remaining -= credit.amount
+      }
+    }
+
+    // Redeem free wash if used
+    if (useFreeWash && freeWashReady) {
+      store.redeemPunchCard()
+    }
+
     toast.success(form.payment_method === 'pay_online_now' ? 'Booking created — complete payment to confirm' : 'Booking confirmed! 🎉')
     setStep(1); setForm(DEFAULTS); setColour('')
+    setUseCredit(false); setUseFreeWash(false)
     setSelectedStation(''); setSelectedOil(''); setSelectedFuelType(''); setSelectedFuelAmount('')
     router.push('/bookings/' + id)
   }
@@ -708,9 +736,62 @@ export default function StaticBookingWizard() {
                   form.payment_method === 'pay_online_now' ? 'Pay Online Now' :
                   form.payment_method === 'pos_on_pickup'  ? 'Pay via POS (Pickup)' : 'Cash on Pickup'
                 } />
-                <ReviewRow label="Total" value={formatZAR(grandTotal)} highlight last />
+                <ReviewRow label="Subtotal" value={formatZAR(grandTotal)} highlight last />
               </div>
             </div>
+
+            {/* Loyalty & Credit Offsets */}
+            {(freeWashReady || totalCredit > 0) && (
+              <div className="space-y-2">
+                <p className="label">Loyalty & Credits</p>
+
+                {freeWashReady && (
+                  <div onClick={() => setUseFreeWash(v => !v)}
+                    className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all"
+                    style={{ background: useFreeWash ? 'rgba(249,115,22,0.08)' : 'var(--surface-inset)', border: `1.5px solid ${useFreeWash ? 'var(--brand-primary)' : 'var(--surface-border)'}` }}>
+                    <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center"
+                      style={{ background: useFreeWash ? 'var(--brand-primary)' : 'var(--surface-card)', border: `2px solid ${useFreeWash ? 'var(--brand-primary)' : 'var(--surface-border)'}` }}>
+                      {useFreeWash && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>⭐ Use Free Wash</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>You earned a free wash — redeem it now</p>
+                    </div>
+                    <span className="font-bold text-sm" style={{ color: 'var(--brand-primary)' }}>
+                      -{formatZAR(useFreeWash ? freeWashApplied : Math.max(0, grandTotal - creditApplied))}
+                    </span>
+                  </div>
+                )}
+
+                {totalCredit > 0 && (
+                  <div onClick={() => setUseCredit(v => !v)}
+                    className="flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all"
+                    style={{ background: useCredit ? 'rgba(52,199,89,0.08)' : 'var(--surface-inset)', border: `1.5px solid ${useCredit ? '#34c759' : 'var(--surface-border)'}` }}>
+                    <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center"
+                      style={{ background: useCredit ? '#34c759' : 'var(--surface-card)', border: `2px solid ${useCredit ? '#34c759' : 'var(--surface-border)'}` }}>
+                      {useCredit && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>💚 Use Wash Credit</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{formatZAR(totalCredit)} available to offset payment</p>
+                    </div>
+                    <span className="font-bold text-sm" style={{ color: '#34c759' }}>
+                      -{formatZAR(useCredit ? creditApplied : 0)}
+                    </span>
+                  </div>
+                )}
+
+                {(useCredit || useFreeWash) && (
+                  <div className="flex items-center justify-between px-1 pt-1">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>You pay</span>
+                    <span className="text-xl font-bold" style={{ color: finalTotal === 0 ? '#34c759' : 'var(--brand-primary)' }}>
+                      {finalTotal === 0 ? 'FREE 🎉' : formatZAR(finalTotal)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {form.fuel_refill && selectedFuelAmount && (
               <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'rgba(0,122,255,0.06)', border: '1px solid rgba(0,122,255,0.15)' }}>
                 <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#007aff' }} />
@@ -725,7 +806,11 @@ export default function StaticBookingWizard() {
             <div className="flex gap-3 pt-1">
               <button className="btn btn-secondary flex-1" onClick={() => setStep(6)}>← Back</button>
               <button className="btn btn-primary flex-1 text-base py-4 font-bold" onClick={handleSubmit}>
-                {form.payment_method === 'pay_online_now' ? `Continue to Payment` : `Confirm Booking — ${formatZAR(grandTotal)} Due`}
+                {form.payment_method === 'pay_online_now'
+                  ? `Continue to Payment`
+                  : finalTotal === 0
+                  ? `Confirm — FREE Wash! 🎉`
+                  : `Confirm Booking — ${formatZAR(finalTotal)} Due`}
               </button>
             </div>
           </FieldGroup>
